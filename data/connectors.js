@@ -1,6 +1,11 @@
 import Sequelize from 'sequelize';
+import appendQuery from 'append-query'
 import casual from 'casual';
+import dotenv from 'dotenv';
+import fetch from 'node-fetch';
 import _ from 'lodash';
+
+dotenv.config();
 
 const db = new Sequelize('blog', null, null, {
   dialect: 'sqlite',
@@ -21,6 +26,44 @@ const CourseRunModel = db.define('courseRun', {
 const EnrollmentModel = db.define('enrollment', {
   mode: { type: Sequelize.STRING },
 });
+
+const lmsUrl = process.env.LMS_URL;
+const lmsApiKey = process.env.LMS_API_KEY;
+const enrollmentApiUrl = lmsUrl + '/api/enrollment/v1/enrollment';
+
+const ApiEnrollment = {
+  getAllForUser(username) {
+    return fetch(
+        appendQuery(enrollmentApiUrl, {'user': username}),
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'JWT ' + process.env.LMS_API_KEY
+          }
+        }
+      )
+      .then(res => res.json())
+      .then(res => {
+        let enrollments = [];
+        for (let enrollment of res) {
+          let course_details = enrollment.course_details;
+          enrollments.push({
+            username: enrollment.user,
+            mode: enrollment.mode,
+            isActive: enrollment.is_active,
+            created: enrollment.created,
+            courseRun: {
+              id: course_details.course_id,
+              title: course_details.course_name,
+              start: course_details.course_start,
+              end: course_details.course_end
+            }
+          });
+        }
+        return enrollments;
+      });
+  },
+};
 
 UserModel.hasMany(EnrollmentModel);
 CourseRunModel.hasMany(EnrollmentModel);
@@ -54,5 +97,4 @@ const User = db.models.user;
 const CourseRun = db.models.courseRun;
 const Enrollment = db.models.enrollment;
 
-export { User, CourseRun, Enrollment };
-
+export { User, CourseRun, Enrollment, ApiEnrollment };

@@ -8,6 +8,7 @@ type Query {
   allUsers: [User]
   courseRun(title: String): CourseRun
   allCourseRuns: [CourseRun]
+  enrollments(username: String): [ApiEnrollment]
 }
 type User {
   id: Int
@@ -27,6 +28,19 @@ type Enrollment {
   user: User
   courseRun: CourseRun
   mode: String
+}
+type ApiEnrollment {
+  username: String
+  mode: String
+  isActive: Boolean
+  created: String
+  courseRun: ApiCourseRun
+}
+type ApiCourseRun {
+  id: String
+  title: String
+  start: String
+  end: String
 }
 `;
 

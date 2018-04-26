@@ -1,4 +1,4 @@
-import { User, CourseRun, Enrollment } from './connectors';
+import { User, CourseRun, Enrollment, ApiEnrollment } from './connectors';
 
 const resolvers = {
     Query: {
@@ -10,6 +10,9 @@ const resolvers = {
       },
       allCourseRuns(_, args) {
         return CourseRun.findAll();
+      },
+      enrollments(_, args) {
+          return ApiEnrollment.getAllForUser(args.username);
       }
     },
     User: {
