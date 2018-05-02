@@ -1,3 +1,4 @@
+import querystring from 'querystring';
 import Sequelize from 'sequelize';
 import appendQuery from 'append-query'
 import casual from 'casual';
@@ -7,10 +8,39 @@ import _ from 'lodash';
 
 dotenv.config();
 
+const lmsUrl = process.env.LMS_URL;
+const lmsApiKey = process.env.LMS_API_KEY;
+const accessTokenApiUrl = lmsUrl + '/oauth2/access_token';
+const enrollmentApiUrl = lmsUrl + '/api/enrollment/v1/enrollment';
+
 const db = new Sequelize('blog', null, null, {
   dialect: 'sqlite',
   storage: './blog.sqlite',
 });
+
+const accessToken = () => {
+  let requestBody = {
+    grant_type: 'client_credentials',
+    client_id: process.env.API_CLIENT_ID,
+    client_secret: process.env.API_CLIENT_SECRET,
+    token_type: 'jwt'
+  };
+  return fetch(
+    appendQuery(accessTokenApiUrl),
+    {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: querystring.stringify(requestBody)
+    }
+  )
+  .then(res => res.json())
+  .then(res => {
+    return res.access_token;
+  });
+}
 
 const UserModel = db.define('user', {
   firstName: { type: Sequelize.STRING },
@@ -27,18 +57,15 @@ const EnrollmentModel = db.define('enrollment', {
   mode: { type: Sequelize.STRING },
 });
 
-const lmsUrl = process.env.LMS_URL;
-const lmsApiKey = process.env.LMS_API_KEY;
-const enrollmentApiUrl = lmsUrl + '/api/enrollment/v1/enrollment';
-
 const ApiEnrollment = {
   getAllForUser(username) {
-    return fetch(
+    return accessToken().then(token => {
+      return fetch(
         appendQuery(enrollmentApiUrl, {'user': username}),
         {
           headers: {
             'Accept': 'application/json',
-            'Authorization': 'JWT ' + process.env.LMS_API_KEY
+            'Authorization': 'JWT ' + token
           }
         }
       )
@@ -62,6 +89,7 @@ const ApiEnrollment = {
         }
         return enrollments;
       });
+    });
   },
 };
 
